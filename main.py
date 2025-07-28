@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import random
+import csv
+from datetime import datetime
+import os
 
 app = FastAPI()
 
-# ✅ Home route (already working)
+# ✅ Home route
 @app.get("/")
 def home():
     return {"message": "Crosscheck Keyword API is live!"}
@@ -13,11 +16,40 @@ def home():
 class CrosscheckRequest(BaseModel):
     keyword: str
 
+# 💾 Save results to CSV
+def save_to_csv(keyword, results):
+    filename = "keyword_log.csv"
+    file_exists = os.path.isfile(filename)
+
+    with open(filename, mode="a", newline="") as file:
+        writer = csv.writer(file)
+
+        if not file_exists:
+            writer.writerow([
+                "timestamp",
+                "keyword",
+                "avg_score",
+                "peak_score",
+                "tiktok_views",
+                "etsy_listings",
+                "reddit_mentions"
+            ])
+
+        writer.writerow([
+            datetime.utcnow().isoformat(),
+            keyword,
+            results["google_trends"]["average_score"],
+            results["google_trends"]["peak_score"],
+            results["tiktok"]["views"],
+            results["etsy"]["listings"],
+            results["reddit"]["mentions"]
+        ])
+
 # 🔍 Simulated crosscheck route
 @app.post("/crosscheck_keyword")
 def crosscheck_keyword(request: CrosscheckRequest):
     keyword = request.keyword
-    return {
+    result = {
         "keyword": keyword,
         "results": {
             "google_trends": {
@@ -45,3 +77,8 @@ def crosscheck_keyword(request: CrosscheckRequest):
         },
         "insight": "Simulated response. Hooked up for real-time integration later."
     }
+
+    # ✅ Save to CSV
+    save_to_csv(keyword, result["results"])
+
+    return result
